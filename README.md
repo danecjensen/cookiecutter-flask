@@ -57,6 +57,7 @@ After you have generated the project code, a few more steps must be taken before
 - Flask-Login for authentication
 - Flask-Bcrypt for password hashing
 - Procfile for deploying to a PaaS (e.g. Heroku)
+- render.yaml and build script for easy deployment to Render.com
 - pytest and Factory-Boy for testing (example tests included)
 - Flask's Click CLI configured with simple commands
 - CSS and JS minification using webpack

@@ -95,6 +95,67 @@ npm run build   # build assets with webpack
 flask run       # start the flask server
 ```
 
+### Deploying to Render.com
+
+This template includes configuration files for easy deployment to [Render.com](https://render.com/). Render automatically provides:
+
+- Free PostgreSQL database (with limitations on free tier)
+- Free web service with 750 hours/month
+- Automatic deployments from Git
+- Free SSL certificates
+
+**Prerequisites:**
+- A [Render.com account](https://dashboard.render.com/register)
+- Your code pushed to a Git repository (GitHub, GitLab, or Bitbucket)
+
+**Deployment Steps:**
+
+1. **Push your code to a Git repository** (if not already done)
+
+2. **Add migrations to version control**
+   ```bash
+   git add migrations/*
+   git commit -m "Add migrations"
+   ```
+
+3. **Create a new Blueprint on Render**
+   - Go to your [Render Dashboard](https://dashboard.render.com/)
+   - Click "New +" and select "Blueprint"
+   - Connect your Git repository
+   - Render will automatically detect the `render.yaml` file
+
+4. **Configure environment variables** (if needed)
+   - Render will auto-generate a `SECRET_KEY`
+   - The `DATABASE_URL` is automatically configured to use the PostgreSQL database
+   - You can add custom environment variables in the Render dashboard
+
+5. **Deploy**
+   - Render will automatically build and deploy your application
+   - The build process runs `render_build.sh` which:
+     - Installs Python dependencies
+     - Installs Node.js dependencies and builds assets
+     - Runs database migrations
+
+6. **Access your application**
+   - Once deployed, your app will be available at: `https://{{cookiecutter.app_name}}.onrender.com`
+   - The free tier may spin down after inactivity; first request may take 30-60 seconds
+
+**Manual Deployment (Alternative):**
+
+If you prefer not to use the Blueprint, you can manually create services:
+
+1. Create a PostgreSQL database in Render
+2. Create a Web Service in Render with these settings:
+   - **Runtime**: Python 3
+   - **Build Command**: `./render_build.sh`
+   - **Start Command**: `gunicorn {{cookiecutter.app_name}}.app:create_app() -b 0.0.0.0:$PORT -w 3`
+   - **Environment Variables**: Link the database and set `FLASK_APP`, `FLASK_ENV`, `SECRET_KEY`
+
+**Important Notes:**
+- The free PostgreSQL database on Render has a 1GB storage limit and will expire after 90 days
+- Consider upgrading to a paid plan for production applications
+- Database backups are only available on paid plans
+
 ## Shell
 
 To open the interactive shell, run
