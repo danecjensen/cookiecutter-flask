@@ -1,0 +1,159 @@
+{% extends "layout.html" %}
+
+{% block page_title %}Calendar - Community Calendar{% endblock %}
+
+{% block css %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+<style>
+  #calendar {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+  }
+  .fc-event {
+    cursor: pointer;
+  }
+  .modal-body img {
+    max-width: 40px;
+    height: 40px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-5 pt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Community Calendar</h2>
+        <a href="{{ url_for('events.create_event') }}" class="btn btn-primary">
+          <i class="fa-solid fa-calendar-plus"></i> Create Event
+        </a>
+      </div>
+      <div id='calendar'></div>
+    </div>
+  </div>
+</div>
+
+<!-- Event Detail Modal -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventModalLabel">Event Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="eventModalBody">
+        <!-- Event details will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <a href="#" id="editEventBtn" class="btn btn-primary" style="display: none;">Edit Event</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
+      events: '{{ url_for("events.get_events") }}',
+      eventClick: function(info) {
+        var eventId = info.event.id;
+
+        // Fetch detailed event information
+        fetch('{{ url_for("events.get_event", event_id=0) }}'.replace('0', eventId))
+          .then(response => response.json())
+          .then(data => {
+            var modalBody = document.getElementById('eventModalBody');
+            var html = '<h4>' + data.title + '</h4>';
+
+            if (data.description) {
+              html += '<p><strong>Description:</strong><br>' + data.description + '</p>';
+            }
+
+            html += '<p><strong>Start:</strong> ' + new Date(data.start).toLocaleString() + '</p>';
+
+            if (data.end) {
+              html += '<p><strong>End:</strong> ' + new Date(data.end).toLocaleString() + '</p>';
+            }
+
+            if (data.location) {
+              html += '<p><strong>Location:</strong> ' + data.location + '</p>';
+            }
+
+            // Display original timeline post if it exists
+            if (data.post) {
+              html += '<hr><h5>Original Post</h5>';
+              html += '<div class="card">';
+              html += '<div class="card-header d-flex align-items-center">';
+
+              if (data.post.user.profile_image) {
+                html += '<img src="' + data.post.user.profile_image + '" alt="' + data.post.user.username + '" class="rounded-circle me-2" width="40" height="40">';
+              } else {
+                html += '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">' + data.post.user.username[0].toUpperCase() + '</div>';
+              }
+
+              html += '<div><strong>' + (data.post.user.full_name || data.post.user.username) + '</strong><br>';
+              html += '<small class="text-muted">' + new Date(data.post.created_at).toLocaleString() + '</small></div>';
+              html += '</div>';
+              html += '<div class="card-body">';
+              html += '<p class="card-text" style="white-space: pre-wrap;">' + data.post.content + '</p>';
+              html += '</div>';
+
+              // Display comments
+              if (data.post.comments && data.post.comments.length > 0) {
+                html += '<div class="card-footer">';
+                html += '<h6 class="mb-3">Comments (' + data.post.comments.length + ')</h6>';
+                data.post.comments.forEach(function(comment) {
+                  html += '<div class="d-flex mb-3">';
+                  if (comment.user.profile_image) {
+                    html += '<img src="' + comment.user.profile_image + '" alt="' + comment.user.username + '" class="rounded-circle me-2" width="32" height="32">';
+                  } else {
+                    html += '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 12px;">' + comment.user.username[0].toUpperCase() + '</div>';
+                  }
+                  html += '<div class="flex-grow-1">';
+                  html += '<div class="bg-light p-2 rounded">';
+                  html += '<strong>' + (comment.user.full_name || comment.user.username) + '</strong>';
+                  html += '<p class="mb-0" style="white-space: pre-wrap;">' + comment.content + '</p>';
+                  html += '</div>';
+                  html += '<small class="text-muted">' + new Date(comment.created_at).toLocaleString() + '</small>';
+                  html += '</div></div>';
+                });
+                html += '</div>';
+              }
+              html += '</div>';
+            }
+
+            modalBody.innerHTML = html;
+
+            // Show edit button if user is creator or admin
+            {% if current_user.is_admin %}
+            document.getElementById('editEventBtn').style.display = 'inline-block';
+            document.getElementById('editEventBtn').href = '{{ url_for("events.edit_event", event_id=0) }}'.replace('0', eventId);
+            {% endif %}
+
+            var modal = new bootstrap.Modal(document.getElementById('eventModal'));
+            modal.show();
+          })
+          .catch(error => {
+            console.error('Error fetching event details:', error);
+            alert('Error loading event details');
+          });
+      }
+    });
+
+    calendar.render();
+  });
+</script>
+{% endblock %}

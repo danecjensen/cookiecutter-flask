@@ -1,0 +1,6 @@
+[run]
+source = community_calendar
+omit = 
+    tests/*
+    autoapp.py
+
